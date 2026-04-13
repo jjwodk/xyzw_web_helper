@@ -110,8 +110,6 @@ import { g_utils } from "@/utils/bonProtocol";
 import { useTokenStore } from "@/stores/tokenStore";
 import { Capacitor } from "@capacitor/core";
 
-// Capacitor HTTP 插件（用于 APK 中绕过 CORS）
-import { Http } from "@capacitor-community/http";
 const tokenStore = useTokenStore();
 const { storeArrayBuffer } = useIndexedDB();
 
@@ -133,7 +131,7 @@ const removeRole = (index: number) => {
 
 /**
  * 跨平台 HTTP 请求函数
- * - 在 Capacitor APK 环境中使用原生 HTTP 插件，绕过 CORS
+ * - 在 APK 中使用 NativeHttp 原生接口，绕过 CORS
  * - 在浏览器开发环境中使用 Vite proxy 路径
  */
 const httpRequest = async (options: {
@@ -146,7 +144,6 @@ const httpRequest = async (options: {
   const { url, method = "GET", headers = {}, data, timeout = 15000 } = options;
 
   // 开发模式下使用 Vite proxy 路径
-  // APK 模式下直接请求真实 URL
   let requestUrl = url;
   if (!Capacitor.isNativePlatform()) {
     // 浏览器开发环境：将真实 URL 转换为 Vite proxy 路径
@@ -155,47 +152,63 @@ const httpRequest = async (options: {
     } else if (url.includes("comb-platform.hortorgames.com")) {
       requestUrl = url.replace("https://comb-platform.hortorgames.com", "/api/hortor");
     }
-  }
 
-  // APK 模式：使用 Capacitor HTTP 插件
-  if (Capacitor.isNativePlatform()) {
+    // 浏览器环境：使用 fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
     try {
-      const response = await Http.request({
-        url,
+      const response = await fetch(requestUrl, {
         method,
         headers,
-        data: data || undefined,
-        timeout,
+        body: data,
+        signal: controller.signal,
       });
 
-      return {
-        status: response.status,
-        data: typeof response.data === "string" ? response.data : JSON.stringify(response.data),
-      };
-    } catch (e) {
-      throw new Error("APK HTTP 请求失败: " + (e as Error).message);
+      clearTimeout(timeoutId);
+      const text = await response.text();
+      return { status: response.status, data: text };
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      throw new Error(fetchError.message || "请求失败");
     }
   }
 
-  // 浏览器开发环境：使用 fetch（会走 Vite proxy）
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  // APK 模式：使用原生 NativeHttp 接口
+  return new Promise((resolve, reject) => {
+    const callbackId = "cb_" + Date.now() + "_" + Math.random().toString(36).substr(2);
 
-  try {
-    const response = await fetch(requestUrl, {
-      method,
-      headers,
-      body: data,
-      signal: controller.signal,
-    });
+    // 注册回调
+    (window as any).__nativeHttpCallback = (id: string, status: number, responseData: string) => {
+      if (id === callbackId) {
+        delete (window as any).__nativeHttpCallback;
+        if (status >= 0) {
+          resolve({ status, data: responseData });
+        } else {
+          reject(new Error(responseData || "请求失败"));
+        }
+      }
+    };
 
-    clearTimeout(timeoutId);
-    const text = await response.text();
-    return { status: response.status, data: text };
-  } catch (fetchError: any) {
-    clearTimeout(timeoutId);
-    throw new Error(fetchError.message || "请求失败");
-  }
+    // 发送请求
+    try {
+      (window as any).NativeHttp?.request(
+        JSON.stringify({ url, method, headers, data, timeout }),
+        callbackId
+      );
+    } catch (e) {
+      delete (window as any).__nativeHttpCallback;
+      reject(new Error("NativeHttp 不可用: " + (e as Error).message));
+    }
+
+    // 超时处理
+    setTimeout(() => {
+      if ((window as any).__nativeHttpCallback) {
+        delete (window as any).__nativeHttpCallback;
+        reject(new Error("请求超时"));
+      }
+    }, timeout + 1000);
+  });
 };
 
 // 响应式数据
