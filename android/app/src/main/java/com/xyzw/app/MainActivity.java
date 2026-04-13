@@ -17,13 +17,46 @@ import java.util.concurrent.Executors;
 public class MainActivity extends BridgeActivity {
 
     private ExecutorService executor = Executors.newSingleThreadExecutor();
+    private boolean jsInterfaceRegistered = false;
 
     @Override
-    public void onStart() {
-        super.onStart();
-        // 注册 JavaScript 接口
-        WebView webView = this.getBridge().getWebView();
-        webView.addJavascriptInterface(new NativeHttpInterface(this), "NativeHttp");
+    protected void onResume() {
+        super.onResume();
+        registerNativeHttpInterface();
+    }
+    
+    private void registerNativeHttpInterface() {
+        if (jsInterfaceRegistered) return;
+        
+        try {
+            WebView webView = this.getBridge().getWebView();
+            
+            if (webView == null) {
+                android.util.Log.e("NativeHttp", "WebView 为空，延迟500ms后重试");
+                // 延迟重试
+                this.getWindow().getDecorView().postDelayed(this::registerNativeHttpInterface, 500);
+                return;
+            }
+            
+            android.util.Log.d("NativeHttp", "开始注册 NativeHttp 接口");
+            android.util.Log.d("NativeHttp", "WebView: " + webView);
+            android.util.Log.d("NativeHttp", "Bridge: " + this.getBridge());
+            
+            webView.addJavascriptInterface(new NativeHttpInterface(this), "NativeHttp");
+            jsInterfaceRegistered = true;
+            
+            // 注入一个检测脚本，用于验证接口是否可用
+            webView.evaluateJavascript(
+                "console.log('[NativeHttp] JavaScript接口已注册'); window.NativeHttpAvailable = true;",
+                null
+            );
+            
+            android.util.Log.d("NativeHttp", "NativeHttp 接口注册成功");
+            
+        } catch (Exception e) {
+            android.util.Log.e("NativeHttp", "注册接口失败: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     /**

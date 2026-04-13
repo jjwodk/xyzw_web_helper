@@ -23,3 +23,21 @@
 ## 最近关注
 - `PeachInfo.vue` 组件调试，涉及日期选择器和 WebSocket 逻辑
 - `Dashboard.vue` 组件响应式代理 Vue 警告修复
+- **APK 微信登录 CORS 问题** (2026-04-13)
+
+## APK 微信登录解决方案
+微信 API (`open.weixin.qq.com`) 不支持 CORS，前端直接请求会被浏览器安全策略拦截。
+
+**解决方案：后端代理**
+- 已创建 `server/weixin_proxy.py` Flask 后端代理服务
+- 前端 `wxqrcode.vue` 已修改为请求 `http://localhost:3000/api/weixin/*`
+- 后端代理转发请求到微信/仙境服务器
+
+**使用方法：**
+1. 启动后端：`cd server && python weixin_proxy.py`（端口 3000）
+2. 同时运行前端：`pnpm run dev`
+3. 开发模式下正常可用
+
+**APK 部署注意：**
+- APK 中 localhost 指向模拟器本身
+- 需要修改代码支持可配置的代理地址，或在 APK 中内置后端

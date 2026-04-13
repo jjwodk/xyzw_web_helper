@@ -47,6 +47,35 @@
     <div id="app">
       <div class="loading">正在加载应用...</div>
     </div>
+    <!-- APK NativeHttp 检测脚本 -->
+    <script>
+      // 检测是否为 Capacitor APK 环境
+      window.__isCapacitorApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+      
+      if (window.__isCapacitorApp) {
+        console.log('[APK环境检测] 这是一个 Capacitor APK');
+        
+        // 等待 NativeHttp 接口注册，最多等待10秒
+        let waitCount = 0;
+        const maxWait = 100;
+        
+        function checkNativeHttp() {
+          waitCount++;
+          if (typeof window.NativeHttp !== 'undefined') {
+            console.log('[APK环境检测] NativeHttp 接口已就绪 (等待了' + waitCount + '次)');
+            window.__nativeHttpReady = true;
+          } else if (waitCount < maxWait) {
+            setTimeout(checkNativeHttp, 100);
+          } else {
+            console.error('[APK环境检测] NativeHttp 接口未注册！APK版本可能过旧，请重新安装。');
+          }
+        }
+        
+        checkNativeHttp();
+      } else {
+        console.log('[APK环境检测] 浏览器开发环境');
+      }
+    </script>
     <script type="module" src="/src/main.js"></script>
     <script type="module" src="/src/xyzw/cocos2d-js-min.js"></script>
     <script type="module" src="/src/xyzw/game-defines.js"></script>

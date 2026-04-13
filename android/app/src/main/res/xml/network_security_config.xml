@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 允许所有连接（包括明文流量用于调试） -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- 微信域名特殊配置 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">weixin.qq.com</domain>
+        <domain includeSubdomains="true">open.weixin.qq.com</domain>
+        <domain includeSubdomains="true">hortorgames.com</domain>
+        <domain includeSubdomains="true">hortorgames.cn</domain>
+    </domain-config>
+</network-security-config>

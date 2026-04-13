@@ -125,6 +125,12 @@ const importForm = reactive({
 // 定义事件
 const emit = defineEmits(["cancel", "ok"]);
 
+// APK环境检测和日志
+const isAPK = Capacitor.isNativePlatform();
+console.log("[微信扫码] APK环境检测:", isAPK);
+console.log("[微信扫码] window.NativeHttp可用:", typeof (window as any).NativeHttp !== 'undefined');
+console.log("[微信扫码] window.NativeHttpAvailable:", (window as any).NativeHttpAvailable);
+
 const removeRole = (index: number) => {
   roleList.value.splice(index, 1);
 };
@@ -143,6 +149,9 @@ const httpRequest = async (options: {
 }): Promise<{ status: number; data: string }> => {
   const { url, method = "GET", headers = {}, data, timeout = 15000 } = options;
 
+  console.log("[微信扫码] httpRequest URL:", url);
+  console.log("[微信扫码] APK模式:", Capacitor.isNativePlatform());
+
   // 开发模式下使用 Vite proxy 路径
   let requestUrl = url;
   if (!Capacitor.isNativePlatform()) {
@@ -152,6 +161,8 @@ const httpRequest = async (options: {
     } else if (url.includes("comb-platform.hortorgames.com")) {
       requestUrl = url.replace("https://comb-platform.hortorgames.com", "/api/hortor");
     }
+
+    console.log("[微信扫码] 浏览器模式，使用代理 URL:", requestUrl);
 
     // 浏览器环境：使用 fetch
     const controller = new AbortController();
@@ -167,19 +178,25 @@ const httpRequest = async (options: {
 
       clearTimeout(timeoutId);
       const text = await response.text();
+      console.log("[微信扫码] 浏览器模式响应状态:", response.status);
       return { status: response.status, data: text };
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
+      console.error("[微信扫码] 浏览器模式请求失败:", fetchError);
       throw new Error(fetchError.message || "请求失败");
     }
   }
 
   // APK 模式：使用原生 NativeHttp 接口
+  console.log("[微信扫码] APK模式，准备使用 NativeHttp");
+  console.log("[微信扫码] window.NativeHttp:", typeof (window as any).NativeHttp);
+  
   return new Promise((resolve, reject) => {
     const callbackId = "cb_" + Date.now() + "_" + Math.random().toString(36).substr(2);
 
     // 注册回调
     (window as any).__nativeHttpCallback = (id: string, status: number, responseData: string) => {
+      console.log("[微信扫码] NativeHttp 回调 id:", id, "status:", status, "data:", responseData?.substring(0, 100));
       if (id === callbackId) {
         delete (window as any).__nativeHttpCallback;
         if (status >= 0) {
@@ -192,18 +209,31 @@ const httpRequest = async (options: {
 
     // 发送请求
     try {
-      (window as any).NativeHttp?.request(
+      const nativeHttp = (window as any).NativeHttp;
+      console.log("[微信扫码] NativeHttp对象:", nativeHttp);
+      
+      if (!nativeHttp) {
+        console.error("[微信扫码] NativeHttp 不可用！");
+        delete (window as any).__nativeHttpCallback;
+        reject(new Error("NativeHttp 接口未注册，请尝试重新安装 APK"));
+      }
+      
+      console.log("[微信扫码] 调用 NativeHttp.request");
+      nativeHttp.request(
         JSON.stringify({ url, method, headers, data, timeout }),
         callbackId
       );
+      console.log("[微信扫码] NativeHttp.request 已调用，等待回调...");
     } catch (e) {
+      console.error("[微信扫码] NativeHttp 调用异常:", e);
       delete (window as any).__nativeHttpCallback;
-      reject(new Error("NativeHttp 不可用: " + (e as Error).message));
+      reject(new Error("NativeHttp 调用失败: " + (e as Error).message));
     }
 
     // 超时处理
     setTimeout(() => {
       if ((window as any).__nativeHttpCallback) {
+        console.warn("[微信扫码] 请求超时");
         delete (window as any).__nativeHttpCallback;
         reject(new Error("请求超时"));
       }
