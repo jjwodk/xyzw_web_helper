@@ -483,6 +483,17 @@ const disabledDate = (ts) => {
 
 const formatDateToShort = (dateStr) => {
   if (!dateStr) return ''
+  // 兼容 Dayjs 对象或 Date 对象
+  if (typeof dateStr !== 'string') {
+    try {
+      const d = typeof dateStr.format === 'function'
+        ? dateStr.format('YYYY/MM/DD')  // Dayjs
+        : `${dateStr.getFullYear()}/${String(dateStr.getMonth() + 1).padStart(2, '0')}/${String(dateStr.getDate()).padStart(2, '0')}`
+      dateStr = d
+    } catch {
+      return ''
+    }
+  }
   const parts = dateStr.split('/')
   if (parts.length !== 3) return dateStr
   const [year, month, day] = parts
@@ -1110,8 +1121,11 @@ const columns = [
 
 //日期选择时调用查询战绩方法
 const fetchBattleRecordsByDate = (val) => {
-  if (undefined != val) {
-    queryDate.value = val
+  if (val != null && val !== undefined) {
+    // valueFormat="YYYY/MM/DD" 时 val 是字符串；兼容 Dayjs 对象
+    queryDate.value = typeof val === 'string' ? val
+      : typeof val.format === 'function' ? val.format('YYYY/MM/DD')
+      : getLastSunday()
   } else {
     queryDate.value = getLastSunday();
   }
@@ -1156,7 +1170,14 @@ const fetchBattleInfo = async () => {
         loading.value = false;
         return;
       }
-      ownLegionId = club.value.id;
+      // 优先从 roleInfo 获取自己的军团ID，兼容 legionInfo 未加载的情况
+      ownLegionId = tokenStore.gameData?.roleInfo?.role?.legionId
+        || club.value?.id;
+      if (!ownLegionId) {
+        message.error("未能获取我方俱乐部ID，请先加载俱乐部信息");
+        loading.value = false;
+        return;
+      }
       opponentLegionId = res.legions[0].id;
       if (ownLegionId === opponentLegionId) {
         opponentLegionId = res.legions[1].id;
@@ -1176,7 +1197,15 @@ const fetchBattleInfo = async () => {
       );
 
       // 2. Get Record Map
-      ownLegionId = club.value.id;
+      // 优先从 roleInfo 获取自己的军团ID，兼容 legionInfo 未加载的情况
+      ownLegionId = tokenStore.gameData?.roleInfo?.role?.legionId
+        || taskRes?.legionId
+        || club.value?.id;
+      if (!ownLegionId) {
+        message.error("未能获取我方俱乐部ID，请先加载俱乐部信息");
+        loading.value = false;
+        return;
+      }
       const res = await tokenStore.sendMessageWithPromise(
         tokenId,
         "legion_getpayloadrecord",

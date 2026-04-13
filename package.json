@@ -11,10 +11,17 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext .vue,.js,.ts --fix",
-    "format": "prettier --write \"src/**/*.{js,vue,ts,css,scss}\""
+    "format": "prettier --write \"src/**/*.{js,vue,ts,css,scss}\"",
+    "android:init": "pnpm build && npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:build": "cd android && ./gradlew assembleDebug",
+    "apk": "pnpm android:init && pnpm android:build"
   },
   "dependencies": {
     "@arco-design/web-vue": "^2.57.0",
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
     "@vicons/ionicons5": "^0.12.0",
     "@vicons/material": "^0.12.0",
     "@vueuse/core": "^13.9.0",
