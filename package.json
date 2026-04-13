@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@arco-design/web-vue": "^2.57.0",
+    "@capacitor-community/http": "^1.4.1",
     "@capacitor/android": "^8.3.0",
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",

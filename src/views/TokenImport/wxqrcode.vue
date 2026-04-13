@@ -108,6 +108,10 @@ import { getTokenId, transformToken, getServerList } from "@/utils/token";
 import useIndexedDB from "@/hooks/useIndexedDB";
 import { g_utils } from "@/utils/bonProtocol";
 import { useTokenStore } from "@/stores/tokenStore";
+import { Capacitor } from "@capacitor/core";
+
+// Capacitor HTTP 插件（用于 APK 中绕过 CORS）
+import { Http } from "@capacitor-community/http";
 const tokenStore = useTokenStore();
 const { storeArrayBuffer } = useIndexedDB();
 
@@ -125,6 +129,73 @@ const emit = defineEmits(["cancel", "ok"]);
 
 const removeRole = (index: number) => {
   roleList.value.splice(index, 1);
+};
+
+/**
+ * 跨平台 HTTP 请求函数
+ * - 在 Capacitor APK 环境中使用原生 HTTP 插件，绕过 CORS
+ * - 在浏览器开发环境中使用 Vite proxy 路径
+ */
+const httpRequest = async (options: {
+  url: string;
+  method?: "GET" | "POST";
+  headers?: Record<string, string>;
+  data?: string;
+  timeout?: number;
+}): Promise<{ status: number; data: string }> => {
+  const { url, method = "GET", headers = {}, data, timeout = 15000 } = options;
+
+  // 开发模式下使用 Vite proxy 路径
+  // APK 模式下直接请求真实 URL
+  let requestUrl = url;
+  if (!Capacitor.isNativePlatform()) {
+    // 浏览器开发环境：将真实 URL 转换为 Vite proxy 路径
+    if (url.includes("open.weixin.qq.com")) {
+      requestUrl = url.replace("https://open.weixin.qq.com", "/api/weixin");
+    } else if (url.includes("comb-platform.hortorgames.com")) {
+      requestUrl = url.replace("https://comb-platform.hortorgames.com", "/api/hortor");
+    }
+  }
+
+  // APK 模式：使用 Capacitor HTTP 插件
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const response = await Http.request({
+        url,
+        method,
+        headers,
+        data: data || undefined,
+        timeout,
+      });
+
+      return {
+        status: response.status,
+        data: typeof response.data === "string" ? response.data : JSON.stringify(response.data),
+      };
+    } catch (e) {
+      throw new Error("APK HTTP 请求失败: " + (e as Error).message);
+    }
+  }
+
+  // 浏览器开发环境：使用 fetch（会走 Vite proxy）
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(requestUrl, {
+      method,
+      headers,
+      body: data,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    const text = await response.text();
+    return { status: response.status, data: text };
+  } catch (fetchError: any) {
+    clearTimeout(timeoutId);
+    throw new Error(fetchError.message || "请求失败");
+  }
 };
 
 // 响应式数据
@@ -281,32 +352,34 @@ const generateQRCode = async () => {
 
 /**
  * 尝试获取微信二维码
+ * 使用 Capacitor 原生 HTTP 插件（APK）或 fetch（浏览器开发模式）
  */
 const tryGetWeixinQR = async () => {
   try {
-    const qrPageUrl =
+    // 微信登录页面 URL
+    const weixinUrl =
       "https://open.weixin.qq.com/connect/app/qrconnect" +
       "?appid=wxfb0d5667e5cb1c44" +
       "&bundleid=com.hortor.games.xyzw" +
       "&scope=snsapi_base,snsapi_userinfo,snsapi_friend,snsapi_message" +
       "&state=weixin";
 
-    const response = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("GET", qrPageUrl, true);
-      xhr.timeout = 15000;
-      xhr.setRequestHeader("Accept", "text/html");
-      xhr.onload = () => resolve(xhr);
-      xhr.onerror = () => reject(new Error("网络错误"));
-      xhr.ontimeout = () => reject(new Error("请求超时"));
-      xhr.send();
+    const response = await httpRequest({
+      url: weixinUrl,
+      method: "GET",
+      headers: {
+        Accept: "text/html",
+        "User-Agent": "Mozilla/5.0 (Linux; Android 10; Build/QKQ1.190825.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36 MicroMessenger/7.0.20.466(0x26070135) Process/tools0 NetType/WIFI Language/zh_CN",
+        Referer: "https://open.weixin.qq.com/",
+      },
+      timeout: 15000,
     });
 
     if (response.status !== 200) {
       throw new Error("HTTP 状态码：" + response.status);
     }
 
-    const html = response.responseText;
+    const html = response.data;
     const doc = new DOMParser().parseFromString(html, "text/html");
 
     let qrUrl = doc.querySelector("img.auth_qrcode")?.src;
@@ -366,26 +439,23 @@ const checkScanStatus = async () => {
       return;
     }
 
-    // 使用微信官方推荐的扫码状态轮询路径
-    const url =
-      "https://open.weixin.qq.com/connect/l/qrconnect?uuid=" +
-      qrcodeUUID.value +
-      "&f=url&_=" +
-      Date.now();
+    // 微信轮询 URL
+    const weixinUrl =
+      `https://open.weixin.qq.com/connect/l/qrconnect?uuid=${qrcodeUUID.value}&f=url&_=${Date.now()}`;
 
-    const res = await new Promise((resolve) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("GET", url, true);
-      xhr.timeout = 5000;
-      xhr.setRequestHeader("Accept", "*/*");
-      xhr.onload = () => resolve(xhr);
-      xhr.onerror = () => resolve({ status: 0 });
-      xhr.ontimeout = () => resolve({ status: 0 });
-      xhr.send();
+    const res = await httpRequest({
+      url: weixinUrl,
+      method: "GET",
+      headers: {
+        Accept: "*/*",
+        "User-Agent": "Mozilla/5.0 (Linux; Android 10; Build/QKQ1.190825.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/83.0.4103.106 Mobile Safari/537.36 MicroMessenger/7.0.20.466(0x26070135) Process/tools0 NetType/WIFI Language/zh_CN",
+        Referer: "https://open.weixin.qq.com/",
+      },
+      timeout: 5000,
     });
 
     if (res.status === 200) {
-      const text = res.responseText;
+      const text = res.data;
 
       // 405 → 扫码确认
       if (text.includes("window.wx_errcode=405")) {
@@ -493,34 +563,38 @@ const getEncryptedData = async (code) => {
     console.log("解密:", decodePayload(encoded));
   } catch (err) { }
 
+  // 仙境登录接口 URL（直接请求，不需要代理）
   const loginUrl =
-    "https://comb-platform.hortorgames.com/comb-login-server/api/v1/login" +
-    "?gameId=xyzwapp" +
-    "&timestamp=" +
-    Date.now() +
-    "&version=android-4.2.1-cn-release" +
-    "&cryptVersion=1.1.0" +
-    "&gameTp=app&system=android" +
-    "&deviceUniqueId=DID-0e782e88-2f3b-4f5b-9020-47f5e5a5a026" +
-    "&packageName=com.hortorgames.xyzw";
+    `https://comb-platform.hortorgames.com/comb-login-server/api/v1/login` +
+    `?gameId=xyzwapp` +
+    `&timestamp=${Date.now()}` +
+    `&version=android-4.2.1-cn-release` +
+    `&cryptVersion=1.1.0` +
+    `&gameTp=app&system=android` +
+    `&deviceUniqueId=DID-0e782e88-2f3b-4f5b-9020-47f5e5a5a026` +
+    `&packageName=com.hortorgames.xyzw`;
 
-  const res = await new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", loginUrl, true);
-    xhr.timeout = 15000;
-    xhr.setRequestHeader("Accept", "*/*");
-    xhr.setRequestHeader("Content-Type", "text/plain; charset=utf-8");
-    xhr.onload = () => resolve(xhr);
-    xhr.onerror = () => reject(new Error("登录失败"));
-    xhr.ontimeout = () => reject(new Error("登录超时"));
-    xhr.send(encoded);
+  const res = await httpRequest({
+    url: loginUrl,
+    method: "POST",
+    headers: {
+      Accept: "*/*",
+      "Content-Type": "text/plain; charset=utf-8",
+      "User-Agent": "Mozilla/5.0 (Linux; Android 12; 23117RK66C Build/V417IR; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/95.0.4638.74 Mobile Safari/537.36",
+      Host: "comb-platform.hortorgames.com",
+      Origin: "https://open.weixin.qq.com",
+      Referer: "https://open.weixin.qq.com/",
+      Connection: "keep-alive",
+    },
+    data: encoded,
+    timeout: 15000,
   });
 
   if (res.status !== 200) {
     throw new Error("HTTP 状态码：" + res.status);
   }
 
-  const json = JSON.parse(res.responseText);
+  const json = JSON.parse(res.data);
   if (json.meta?.errCode !== 0) {
     throw new Error("登录失败：" + json.meta?.errMsg);
   }

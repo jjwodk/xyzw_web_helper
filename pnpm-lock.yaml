@@ -11,6 +11,9 @@ importers:
       '@arco-design/web-vue':
         specifier: ^2.57.0
         version: 2.57.0(vue@3.5.29(typescript@5.9.3))
+      '@capacitor-community/http':
+        specifier: ^1.4.1
+        version: 1.4.1
       '@capacitor/android':
         specifier: ^8.3.0
         version: 8.3.0(@capacitor/core@8.3.0)
@@ -325,6 +328,14 @@ packages:
     resolution: {integrity: sha512-LwdZHpScM4Qz8Xw2iKSzS+cfglZzJGvofQICy7W7v4caru4EaAmyUuO6BGrbyQ2mYV11W0U8j5mBhd14dd3B0A==}
     engines: {node: '>=6.9.0'}
 
+  '@capacitor-community/http@1.4.1':
+    resolution: {integrity: sha512-+pCkBXrwfm97UfjOgjV950H/qZ8SE36Mrcb46BlL1ps3VIsGuIO+AulL8GqTC6LewheRVtGJpRspNtneXQotNA==}
+
+  '@capacitor/android@3.9.0':
+    resolution: {integrity: sha512-YTPyrh1NozEuYXWGtfqN27TLXUrLbZX9fggyd4JQ1yMaUZTmLPm5dCuznONhQ49aPkJnUJB02JfpHy/qGwa2Lw==}
+    peerDependencies:
+      '@capacitor/core': ^3.9.0
+
   '@capacitor/android@8.3.0':
     resolution: {integrity: sha512-EQy6ByUuKayQBJmMm/e0byJiHavqsQHrvW23BuT2GNVQvenAvipqwaePiJHzrv2PZr7A0T0+se4kgDCeROj0mQ==}
     peerDependencies:
@@ -335,8 +346,21 @@ packages:
     engines: {node: '>=22.0.0'}
     hasBin: true
 
+  '@capacitor/core@3.9.0':
+    resolution: {integrity: sha512-j1lL0+/7stY8YhIq1Lm6xixvUqIn89vtyH5ZpJNNmcZ0kwz6K9eLkcG6fvq1UWMDgSVZg9JrRGSFhb4LLoYOsw==}
+
   '@capacitor/core@8.3.0':
     resolution: {integrity: sha512-S4ajn4G/fS3VJj8salxqH/3LO5PPWv1VxGKQ27OCajnDcLJjEg9VXwgMPnlypgkIOqCJ2fmQLtk8GT+BlI9/rw==}
+
+  '@capacitor/filesystem@1.1.0':
+    resolution: {integrity: sha512-8O3UuvL8HNUEJvZnmn8yUmvgB1evtXfcF0oxIo3YbSlylqywJwS3JTiuhKmsvSxCdpbTy8IaTsutVh3gZgWbKg==}
+    peerDependencies:
+      '@capacitor/core': ^3.0.0
+
+  '@capacitor/ios@3.9.0':
+    resolution: {integrity: sha512-GezPCJIujRHnF4wbrKJx6Q/mgFz0f9rmh/steTTXQZI+nEl6mHk6NWh8235p7YbhonYi5WD0rFNirrjGg1EaGw==}
+    peerDependencies:
+      '@capacitor/core': ^3.9.0
 
   '@clack/core@0.5.0':
     resolution: {integrity: sha512-p3y0FIOwaYRUPRcMO7+dlmLh8PSRcrjuTndsiA0WAFbWES0mLZlrjVoBRZ9DzkPFJZG6KGkJmoEAY0ZcVWTkow==}
@@ -3729,6 +3753,17 @@ snapshots:
       '@babel/helper-string-parser': 7.27.1
       '@babel/helper-validator-identifier': 7.28.5
 
+  '@capacitor-community/http@1.4.1':
+    dependencies:
+      '@capacitor/android': 3.9.0(@capacitor/core@3.9.0)
+      '@capacitor/core': 3.9.0
+      '@capacitor/filesystem': 1.1.0(@capacitor/core@3.9.0)
+      '@capacitor/ios': 3.9.0(@capacitor/core@3.9.0)
+
+  '@capacitor/android@3.9.0(@capacitor/core@3.9.0)':
+    dependencies:
+      '@capacitor/core': 3.9.0
+
   '@capacitor/android@8.3.0(@capacitor/core@8.3.0)':
     dependencies:
       '@capacitor/core': 8.3.0
@@ -3755,9 +3790,21 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@capacitor/core@3.9.0':
+    dependencies:
+      tslib: 2.8.1
+
   '@capacitor/core@8.3.0':
     dependencies:
       tslib: 2.8.1
+
+  '@capacitor/filesystem@1.1.0(@capacitor/core@3.9.0)':
+    dependencies:
+      '@capacitor/core': 3.9.0
+
+  '@capacitor/ios@3.9.0(@capacitor/core@3.9.0)':
+    dependencies:
+      '@capacitor/core': 3.9.0
 
   '@clack/core@0.5.0':
     dependencies:
