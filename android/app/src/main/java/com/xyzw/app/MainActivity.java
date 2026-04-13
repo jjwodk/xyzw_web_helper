@@ -19,7 +19,7 @@ public class MainActivity extends BridgeActivity {
     private ExecutorService executor = Executors.newSingleThreadExecutor();
 
     @Override
-    protected void onStart() {
+    public void onStart() {
         super.onStart();
         // 注册 JavaScript 接口
         WebView webView = this.getBridge().getWebView();
