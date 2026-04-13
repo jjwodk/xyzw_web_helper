@@ -285,7 +285,7 @@ const generateQRCode = async () => {
 const tryGetWeixinQR = async () => {
   try {
     const qrPageUrl =
-      "/api/weixin/connect/app/qrconnect" +
+      "https://open.weixin.qq.com/connect/app/qrconnect" +
       "?appid=wxfb0d5667e5cb1c44" +
       "&bundleid=com.hortor.games.xyzw" +
       "&scope=snsapi_base,snsapi_userinfo,snsapi_friend,snsapi_message" +
@@ -368,7 +368,7 @@ const checkScanStatus = async () => {
 
     // 使用微信官方推荐的扫码状态轮询路径
     const url =
-      "/api/weixin/connect/l/qrconnect?uuid=" +
+      "https://open.weixin.qq.com/connect/l/qrconnect?uuid=" +
       qrcodeUUID.value +
       "&f=url&_=" +
       Date.now();
@@ -494,7 +494,7 @@ const getEncryptedData = async (code) => {
   } catch (err) { }
 
   const loginUrl =
-    "/api/hortor/comb-login-server/api/v1/login" +
+    "https://comb-platform.hortorgames.com/comb-login-server/api/v1/login" +
     "?gameId=xyzwapp" +
     "&timestamp=" +
     Date.now() +
