@@ -38,8 +38,18 @@ jobs:
           $releaseDir = "src-tauri/target/release"
           $portableDir = "$releaseDir/xyzw-web-helper-portable"
           New-Item -ItemType Directory -Force -Path $portableDir
-          Copy-Item "$releaseDir/xyzw-web-helper.exe" $portableDir/
+          # 查找实际生成的 exe 文件（可能包含版本号）
+          $exeFile = Get-ChildItem "$releaseDir/*.exe" | Where-Object { $_.Name -like "*.exe" -and $_.Name -notlike "*setup*" } | Select-Object -First 1
+          if ($exeFile) {
+            Copy-Item $exeFile.FullName "$portableDir/xyzw-web-helper.exe"
+            Write-Host "Copied: $($exeFile.Name)"
+          } else {
+            Write-Error "No exe file found in $releaseDir"
+            exit 1
+          }
+          # 复制 DLL 文件
           Copy-Item "$releaseDir/*.dll" $portableDir/ -ErrorAction SilentlyContinue
+          # 创建 zip
           Compress-Archive -Path "$portableDir/*" -DestinationPath "$releaseDir/xyzw-web-helper-portable.zip" -Force
 
       - name: Upload EXE artifact
