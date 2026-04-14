@@ -27,7 +27,7 @@ jobs:
         run: pnpm install --no-frozen-lockfile
 
       - name: Install Rust
-        uses: dtolnay/rust-action@stable
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Build Tauri app
         run: pnpm tauri build
