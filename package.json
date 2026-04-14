@@ -15,7 +15,10 @@
     "android:init": "pnpm build && npx cap sync android",
     "android:open": "npx cap open android",
     "android:build": "cd android && ./gradlew assembleDebug",
-    "apk": "pnpm android:init && pnpm android:build"
+    "apk": "pnpm android:init && pnpm android:build",
+    "desktop:dev": "pnpm tauri dev",
+    "desktop:build": "pnpm tauri build",
+    "desktop": "pnpm desktop:build"
   },
   "dependencies": {
     "@arco-design/web-vue": "^2.57.0",
@@ -44,6 +47,8 @@
     "@antfu/eslint-config": "^6.7.3",
     "@iconify-json/mdi": "^1.2.3",
     "@intlify/unplugin-vue-i18n": "^6.0.8",
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/cli": "^2.10.1",
     "@types/crypto-js": "^4.2.2",
     "@types/node": "^20.19.21",
     "@vitejs/plugin-vue": "^5.2.4",
