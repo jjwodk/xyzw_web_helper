@@ -55,19 +55,19 @@
       if (window.__isCapacitorApp) {
         console.log('[APK环境检测] 这是一个 Capacitor APK');
         
-        // 等待 NativeHttp 接口注册，最多等待10秒
+        // 等待 XyzwNativeHttp 接口注册，最多等待10秒
         let waitCount = 0;
         const maxWait = 100;
         
         function checkNativeHttp() {
           waitCount++;
-          if (typeof window.NativeHttp !== 'undefined') {
-            console.log('[APK环境检测] NativeHttp 接口已就绪 (等待了' + waitCount + '次)');
+          if (typeof window.XyzwNativeHttp !== 'undefined') {
+            console.log('[APK环境检测] XyzwNativeHttp 接口已就绪 (等待了' + waitCount + '次)');
             window.__nativeHttpReady = true;
           } else if (waitCount < maxWait) {
             setTimeout(checkNativeHttp, 100);
           } else {
-            console.error('[APK环境检测] NativeHttp 接口未注册！APK版本可能过旧，请重新安装。');
+            console.error('[APK环境检测] XyzwNativeHttp 接口未注册！APK版本可能过旧，请重新安装。');
           }
         }
         

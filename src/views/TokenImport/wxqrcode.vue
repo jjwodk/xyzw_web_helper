@@ -187,16 +187,16 @@ const httpRequest = async (options: {
     }
   }
 
-  // APK 模式：使用原生 NativeHttp 接口
-  console.log("[微信扫码] APK模式，准备使用 NativeHttp");
-  console.log("[微信扫码] window.NativeHttp:", typeof (window as any).NativeHttp);
+  // APK 模式：使用原生 XyzwNativeHttp 接口
+  console.log("[微信扫码] APK模式，准备使用 XyzwNativeHttp");
+  console.log("[微信扫码] window.XyzwNativeHttp:", typeof (window as any).XyzwNativeHttp);
   
   return new Promise((resolve, reject) => {
     const callbackId = "cb_" + Date.now() + "_" + Math.random().toString(36).substr(2);
 
     // 注册回调
     (window as any).__nativeHttpCallback = (id: string, status: number, responseData: string) => {
-      console.log("[微信扫码] NativeHttp 回调 id:", id, "status:", status, "data:", responseData?.substring(0, 100));
+      console.log("[微信扫码] XyzwNativeHttp 回调 id:", id, "status:", status, "data:", responseData?.substring(0, 100));
       if (id === callbackId) {
         delete (window as any).__nativeHttpCallback;
         if (status >= 0) {
@@ -209,23 +209,23 @@ const httpRequest = async (options: {
 
     // 发送请求
     try {
-      const nativeHttp = (window as any).NativeHttp;
-      console.log("[微信扫码] NativeHttp对象:", nativeHttp);
+      const nativeHttp = (window as any).XyzwNativeHttp;
+      console.log("[微信扫码] XyzwNativeHttp对象:", nativeHttp);
       
       if (!nativeHttp) {
-        console.error("[微信扫码] NativeHttp 不可用！");
+        console.error("[微信扫码] XyzwNativeHttp 不可用！");
         delete (window as any).__nativeHttpCallback;
-        reject(new Error("NativeHttp 接口未注册，请尝试重新安装 APK"));
+        reject(new Error("XyzwNativeHttp 接口未注册，请尝试重新安装 APK"));
       }
       
-      console.log("[微信扫码] 调用 NativeHttp.request");
+      console.log("[微信扫码] 调用 XyzwNativeHttp.request");
       nativeHttp.request(
         JSON.stringify({ url, method, headers, data, timeout }),
         callbackId
       );
-      console.log("[微信扫码] NativeHttp.request 已调用，等待回调...");
+      console.log("[微信扫码] XyzwNativeHttp.request 已调用，等待回调...");
     } catch (e) {
-      console.error("[微信扫码] NativeHttp 调用异常:", e);
+      console.error("[微信扫码] XyzwNativeHttp 调用异常:", e);
       delete (window as any).__nativeHttpCallback;
       reject(new Error("NativeHttp 调用失败: " + (e as Error).message));
     }

@@ -42,12 +42,12 @@ public class MainActivity extends BridgeActivity {
             android.util.Log.d("NativeHttp", "WebView: " + webView);
             android.util.Log.d("NativeHttp", "Bridge: " + this.getBridge());
             
-            webView.addJavascriptInterface(new NativeHttpInterface(this), "NativeHttp");
+            webView.addJavascriptInterface(new NativeHttpInterface(this), "XyzwNativeHttp");
             jsInterfaceRegistered = true;
             
             // 注入一个检测脚本，用于验证接口是否可用
             webView.evaluateJavascript(
-                "console.log('[NativeHttp] JavaScript接口已注册'); window.NativeHttpAvailable = true;",
+                "console.log('[XyzwNativeHttp] JavaScript接口已注册'); window.XyzwNativeHttpAvailable = true;",
                 null
             );
             
