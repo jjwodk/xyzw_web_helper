@@ -20,7 +20,7 @@ public class MainActivity extends BridgeActivity {
     private boolean jsInterfaceRegistered = false;
 
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         registerNativeHttpInterface();
     }
