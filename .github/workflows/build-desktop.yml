@@ -38,7 +38,6 @@ jobs:
           name: xyzw-web-helper-windows
           path: |
             src-tauri/target/release/xyzw-web-helper.exe
-            src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*.exe
           retention-days: 7
 
@@ -48,7 +47,6 @@ jobs:
         with:
           files: |
             src-tauri/target/release/xyzw-web-helper.exe
-            src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
