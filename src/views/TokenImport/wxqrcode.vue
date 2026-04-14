@@ -126,11 +126,11 @@ const importForm = reactive({
 // 定义事件
 const emit = defineEmits(["cancel", "ok"]);
 
-// 环境检测和日志
-const isAPK = Capacitor.isNativePlatform();
-const isTauri = typeof (window as any).__TAURI__ !== 'undefined';
-console.log("[微信扫码] APK环境检测:", isAPK);
-console.log("[微信扫码] Tauri环境检测:", isTauri);
+// 环境检测函数（运行时检测，避免模块加载时 window 未就绪）
+const isAPK = () => Capacitor.isNativePlatform();
+const isTauri = () => typeof (window as any).__TAURI__ !== 'undefined';
+console.log("[微信扫码] APK环境检测:", isAPK());
+console.log("[微信扫码] Tauri环境检测:", isTauri());
 console.log("[微信扫码] window.NativeHttp可用:", typeof (window as any).NativeHttp !== 'undefined');
 console.log("[微信扫码] window.NativeHttpAvailable:", (window as any).NativeHttpAvailable);
 
@@ -154,32 +154,32 @@ const httpRequest = async (options: {
   const { url, method = "GET", headers = {}, data, timeout = 15000 } = options;
 
   console.log("[微信扫码] httpRequest URL:", url);
-  console.log("[微信扫码] APK模式:", Capacitor.isNativePlatform());
-  console.log("[微信扫码] Tauri模式:", isTauri);
+  console.log("[微信扫码] APK模式:", isAPK());
+  console.log("[微信扫码] Tauri模式:", isTauri());
 
   // Tauri 桌面端：使用 Tauri HTTP 插件绕过 CORS
-  if (isTauri) {
+  if (isTauri()) {
     console.log("[微信扫码] Tauri模式，使用 tauriFetch");
     try {
       const response = await tauriFetch(url, {
-        method,
-        headers,
-        body: data,
+        method: method || "GET",
+        headers: headers || {},
+        body: data || null,
       });
       const text = await response.text();
       console.log("[微信扫码] Tauri模式响应状态:", response.status);
       return { status: response.status, data: text };
     } catch (error: any) {
       console.error("[微信扫码] Tauri模式请求失败:", error);
-      const errorMsg = "Tauri请求失败: " + (error.message || JSON.stringify(error));
+      const errorMsg = "Tauri请求失败: " + (error?.message || String(error));
       alert(errorMsg);
-      throw new Error(error.message || "Tauri请求失败");
+      throw new Error(error?.message || "Tauri请求失败");
     }
   }
 
   // 开发模式下使用 Vite proxy 路径
   let requestUrl = url;
-  if (!Capacitor.isNativePlatform()) {
+  if (!isAPK()) {
     // 浏览器开发环境：将真实 URL 转换为 Vite proxy 路径
     if (url.includes("open.weixin.qq.com")) {
       requestUrl = url.replace("https://open.weixin.qq.com", "/api/weixin");
@@ -215,6 +215,11 @@ const httpRequest = async (options: {
   // APK 模式：使用原生 XyzwNativeHttp 接口
   console.log("[微信扫码] APK模式，准备使用 XyzwNativeHttp");
   console.log("[微信扫码] window.XyzwNativeHttp:", typeof (window as any).XyzwNativeHttp);
+  
+  // 再次确认不是 Tauri 环境（避免环境检测冲突）
+  if (isTauri()) {
+    console.warn("[微信扫码] 警告：同时检测到 Tauri 环境，优先使用 Tauri HTTP");
+  }
 
   return new Promise((resolve, reject) => {
     const callbackId = "cb_" + Date.now() + "_" + Math.random().toString(36).substr(2);

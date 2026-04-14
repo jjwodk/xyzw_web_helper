@@ -21,15 +21,16 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "dangerousDisableAssetCspModification": false
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": "all",
     "windows": {
       "nsis": {
-        "installMode": "both"
+        "installMode": "currentUser"
       }
     },
     "icon": [

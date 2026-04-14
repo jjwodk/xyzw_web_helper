@@ -2,21 +2,14 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "enables the default permissions",
-  "windows": [
-    "main"
-  ],
+  "windows": ["main"],
   "permissions": [
     "core:default",
-    "http:default",
     {
-      "identifier": "http:allow-fetch",
+      "identifier": "http:default",
       "allow": [
-        {
-          "url": "https://open.weixin.qq.com"
-        },
-        {
-          "url": "https://comb-platform.hortorgames.com"
-        }
+        { "url": "https://open.weixin.qq.com/*" },
+        { "url": "https://comb-platform.hortorgames.com/*" }
       ]
     }
   ]
