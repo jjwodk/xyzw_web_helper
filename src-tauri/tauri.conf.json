@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "com.xyzw.webhelper",
   "build": {
-    "frontendDist": "dist",
+    "frontendDist": "../dist",
     "devUrl": "http://localhost:10035",
     "beforeDevCommand": "pnpm dev",
     "beforeBuildCommand": "pnpm build"

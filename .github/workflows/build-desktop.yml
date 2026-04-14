@@ -26,9 +26,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build web app
-        run: pnpm build
-
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
