@@ -77,17 +77,24 @@ public class MainActivity extends BridgeActivity {
          */
         @JavascriptInterface
         public void request(String config, String callbackId) {
+            android.util.Log.d("NativeHttp", "request 被调用, callbackId: " + callbackId);
+            android.util.Log.d("NativeHttp", "request config: " + config.substring(0, Math.min(200, config.length())));
+            
             executor.execute(() -> {
                 try {
                     // 解析配置
                     org.json.JSONObject jsonConfig = new org.json.JSONObject(config);
                     String url = jsonConfig.getString("url");
                     String method = jsonConfig.optString("method", "GET");
+                    
+                    android.util.Log.d("NativeHttp", "解析配置成功, URL: " + url);
+                    
                     org.json.JSONObject headers = jsonConfig.optJSONObject("headers");
                     String data = jsonConfig.optString("data", "");
                     int timeout = jsonConfig.optInt("timeout", 15000);
 
                     // 创建连接
+                    android.util.Log.d("NativeHttp", "创建 HTTP 连接...");
                     URL requestUrl = new URL(url);
                     HttpURLConnection conn = (HttpURLConnection) requestUrl.openConnection();
                     conn.setRequestMethod(method);
@@ -108,13 +115,17 @@ public class MainActivity extends BridgeActivity {
 
                     // 发送数据
                     if (!data.isEmpty() && "POST".equals(method)) {
+                        android.util.Log.d("NativeHttp", "发送 POST 数据...");
                         OutputStream os = conn.getOutputStream();
                         os.write(data.getBytes("UTF-8"));
                         os.close();
                     }
 
                     // 获取响应
+                    android.util.Log.d("NativeHttp", "等待响应...");
                     int responseCode = conn.getResponseCode();
+                    android.util.Log.d("NativeHttp", "响应码: " + responseCode);
+                    
                     BufferedReader reader;
                     if (responseCode >= 200 && responseCode < 300) {
                         reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
@@ -131,6 +142,9 @@ public class MainActivity extends BridgeActivity {
                     conn.disconnect();
 
                     // 返回结果给 JavaScript
+                    String responseData = response.length() > 500 ? response.substring(0, 500) + "..." : response.toString();
+                    android.util.Log.d("NativeHttp", "准备回调, callbackId: " + callbackId + ", responseLength: " + response.length());
+                    
                     String result = String.format(
                         "window.__nativeHttpCallback('%s', %d, %s)",
                         callbackId, responseCode, 
@@ -139,10 +153,18 @@ public class MainActivity extends BridgeActivity {
                     
                     activity.runOnUiThread(() -> {
                         WebView webView = activity.getBridge().getWebView();
-                        webView.evaluateJavascript(result, null);
+                        if (webView != null) {
+                            android.util.Log.d("NativeHttp", "调用 evaluateJavascript...");
+                            webView.evaluateJavascript(result, null);
+                            android.util.Log.d("NativeHttp", "evaluateJavascript 完成");
+                        } else {
+                            android.util.Log.e("NativeHttp", "WebView 为空，无法回调");
+                        }
                     });
 
                 } catch (Exception e) {
+                    android.util.Log.e("NativeHttp", "请求异常: " + e.getMessage());
+                    e.printStackTrace();
                     // 返回错误
                     String error = org.json.JSONObject.quote("Error: " + e.getMessage());
                     String result = String.format(
@@ -151,7 +173,9 @@ public class MainActivity extends BridgeActivity {
                     );
                     activity.runOnUiThread(() -> {
                         WebView webView = activity.getBridge().getWebView();
-                        webView.evaluateJavascript(result, null);
+                        if (webView != null) {
+                            webView.evaluateJavascript(result, null);
+                        }
                     });
                 }
             });
