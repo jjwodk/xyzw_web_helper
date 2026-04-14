@@ -171,6 +171,8 @@ const httpRequest = async (options: {
       return { status: response.status, data: text };
     } catch (error: any) {
       console.error("[微信扫码] Tauri模式请求失败:", error);
+      const errorMsg = "Tauri请求失败: " + (error.message || JSON.stringify(error));
+      alert(errorMsg);
       throw new Error(error.message || "Tauri请求失败");
     }
   }
