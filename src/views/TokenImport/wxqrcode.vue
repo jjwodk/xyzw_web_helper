@@ -109,6 +109,7 @@ import useIndexedDB from "@/hooks/useIndexedDB";
 import { g_utils } from "@/utils/bonProtocol";
 import { useTokenStore } from "@/stores/tokenStore";
 import { Capacitor } from "@capacitor/core";
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 
 const tokenStore = useTokenStore();
 const { storeArrayBuffer } = useIndexedDB();
@@ -125,9 +126,11 @@ const importForm = reactive({
 // 定义事件
 const emit = defineEmits(["cancel", "ok"]);
 
-// APK环境检测和日志
+// 环境检测和日志
 const isAPK = Capacitor.isNativePlatform();
+const isTauri = typeof (window as any).__TAURI__ !== 'undefined';
 console.log("[微信扫码] APK环境检测:", isAPK);
+console.log("[微信扫码] Tauri环境检测:", isTauri);
 console.log("[微信扫码] window.NativeHttp可用:", typeof (window as any).NativeHttp !== 'undefined');
 console.log("[微信扫码] window.NativeHttpAvailable:", (window as any).NativeHttpAvailable);
 
@@ -138,6 +141,7 @@ const removeRole = (index: number) => {
 /**
  * 跨平台 HTTP 请求函数
  * - 在 APK 中使用 NativeHttp 原生接口，绕过 CORS
+ * - 在 Tauri 桌面端使用 tauriFetch，绕过 CORS
  * - 在浏览器开发环境中使用 Vite proxy 路径
  */
 const httpRequest = async (options: {
@@ -151,6 +155,25 @@ const httpRequest = async (options: {
 
   console.log("[微信扫码] httpRequest URL:", url);
   console.log("[微信扫码] APK模式:", Capacitor.isNativePlatform());
+  console.log("[微信扫码] Tauri模式:", isTauri);
+
+  // Tauri 桌面端：使用 Tauri HTTP 插件绕过 CORS
+  if (isTauri) {
+    console.log("[微信扫码] Tauri模式，使用 tauriFetch");
+    try {
+      const response = await tauriFetch(url, {
+        method,
+        headers,
+        body: data,
+      });
+      const text = await response.text();
+      console.log("[微信扫码] Tauri模式响应状态:", response.status);
+      return { status: response.status, data: text };
+    } catch (error: any) {
+      console.error("[微信扫码] Tauri模式请求失败:", error);
+      throw new Error(error.message || "Tauri请求失败");
+    }
+  }
 
   // 开发模式下使用 Vite proxy 路径
   let requestUrl = url;
@@ -190,7 +213,7 @@ const httpRequest = async (options: {
   // APK 模式：使用原生 XyzwNativeHttp 接口
   console.log("[微信扫码] APK模式，准备使用 XyzwNativeHttp");
   console.log("[微信扫码] window.XyzwNativeHttp:", typeof (window as any).XyzwNativeHttp);
-  
+
   return new Promise((resolve, reject) => {
     const callbackId = "cb_" + Date.now() + "_" + Math.random().toString(36).substr(2);
 
@@ -212,14 +235,14 @@ const httpRequest = async (options: {
     try {
       const nativeHttp = (window as any).XyzwNativeHttp;
       console.log("[微信扫码] XyzwNativeHttp对象:", nativeHttp);
-      
+
       if (!nativeHttp) {
         console.error("[微信扫码] XyzwNativeHttp 不可用！");
         nativeHttpCallbacks.delete(callbackId);
         reject(new Error("XyzwNativeHttp 接口未注册，请尝试重新安装 APK"));
         return;
       }
-      
+
       console.log("[微信扫码] 调用 XyzwNativeHttp.request, callbackId:", callbackId);
       nativeHttp.request(
         JSON.stringify({ url, method, headers, data, timeout }),
