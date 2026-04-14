@@ -194,18 +194,19 @@ const httpRequest = async (options: {
   return new Promise((resolve, reject) => {
     const callbackId = "cb_" + Date.now() + "_" + Math.random().toString(36).substr(2);
 
-    // 注册回调
-    (window as any).__nativeHttpCallback = (id: string, status: number, responseData: string) => {
-      console.log("[微信扫码] XyzwNativeHttp 回调 id:", id, "status:", status, "data:", responseData?.substring(0, 100));
-      if (id === callbackId) {
-        delete (window as any).__nativeHttpCallback;
-        if (status >= 0) {
-          resolve({ status, data: responseData });
-        } else {
-          reject(new Error(responseData || "请求失败"));
-        }
+    // 初始化全局回调（如果还没有）
+    initNativeHttpCallback();
+
+    // 注册当前请求的回调
+    const timeoutId = setTimeout(() => {
+      if (nativeHttpCallbacks.has(callbackId)) {
+        console.warn("[微信扫码] 请求超时, callbackId:", callbackId);
+        nativeHttpCallbacks.delete(callbackId);
+        reject(new Error("请求超时"));
       }
-    };
+    }, timeout);
+
+    nativeHttpCallbacks.set(callbackId, { resolve, reject, timeoutId });
 
     // 发送请求
     try {
@@ -214,11 +215,12 @@ const httpRequest = async (options: {
       
       if (!nativeHttp) {
         console.error("[微信扫码] XyzwNativeHttp 不可用！");
-        delete (window as any).__nativeHttpCallback;
+        nativeHttpCallbacks.delete(callbackId);
         reject(new Error("XyzwNativeHttp 接口未注册，请尝试重新安装 APK"));
+        return;
       }
       
-      console.log("[微信扫码] 调用 XyzwNativeHttp.request");
+      console.log("[微信扫码] 调用 XyzwNativeHttp.request, callbackId:", callbackId);
       nativeHttp.request(
         JSON.stringify({ url, method, headers, data, timeout }),
         callbackId
@@ -226,18 +228,9 @@ const httpRequest = async (options: {
       console.log("[微信扫码] XyzwNativeHttp.request 已调用，等待回调...");
     } catch (e) {
       console.error("[微信扫码] XyzwNativeHttp 调用异常:", e);
-      delete (window as any).__nativeHttpCallback;
+      nativeHttpCallbacks.delete(callbackId);
       reject(new Error("NativeHttp 调用失败: " + (e as Error).message));
     }
-
-    // 超时处理
-    setTimeout(() => {
-      if ((window as any).__nativeHttpCallback) {
-        console.warn("[微信扫码] 请求超时");
-        delete (window as any).__nativeHttpCallback;
-        reject(new Error("请求超时"));
-      }
-    }, timeout + 1000);
   });
 };
 
@@ -250,6 +243,33 @@ const statusType = ref("info");
 const accountName = ref<string | null>(null);
 const isScanning = ref(false);
 const scanInterval = ref<any>(null);
+// NativeHttp 回调 Map（支持多个并发请求）
+const nativeHttpCallbacks: Map<string, { resolve: Function; reject: Function; timeoutId?: number }> = new Map();
+
+// 初始化全局回调（只执行一次）
+function initNativeHttpCallback() {
+  if (!(window as any).__nativeHttpCallback) {
+    (window as any).__nativeHttpCallback = (id: string, status: number, responseData: string) => {
+      console.log("[微信扫码] XyzwNativeHttp 全局回调 id:", id, "status:", status);
+      const callback = nativeHttpCallbacks.get(id);
+      if (callback) {
+        if (status >= 0) {
+          callback.resolve({ status, data: responseData });
+        } else {
+          callback.reject(new Error(responseData || "请求失败"));
+        }
+        if (callback.timeoutId) {
+          clearTimeout(callback.timeoutId);
+        }
+        nativeHttpCallbacks.delete(id);
+      } else {
+        console.warn("[微信扫码] 未知回调 id:", id);
+      }
+    };
+    console.log("[微信扫码] 全局回调初始化完成");
+  }
+}
+
 const timeout = 120000; // 120秒超时
 const startTime = ref<number | null>(null);
 
